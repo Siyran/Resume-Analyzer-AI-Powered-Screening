@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resume Analyzer</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:"Poppins",sans-serif; }
+    body {
+      height:100vh; display:flex; justify-content:center; align-items:center; overflow:hidden;
+      background: linear-gradient(-45deg, #6a11cb, #2575fc, #67dfa5, #ee0979);
+      background-size:400% 400%; animation:gradientBG 15s ease infinite; color:#111; position:relative;
+    }
+    @keyframes gradientBG { 0%{background-position:0% 50%;} 50%{background-position:100% 50%;} 100%{background-position:0% 50%;} }
+
+    .bubbles{position:absolute; top:0; left:0; width:100%; height:100%; overflow:hidden; z-index:0;}
+    .bubbles span{position:absolute; display:block; border-radius:50%; bottom:-150px; background:rgba(255,255,255,0.3); animation:rise 25s infinite;}
+    @keyframes rise{0%{transform:translateY(0) scale(1);opacity:1;}100%{transform:translateY(-1000px) scale(0.5);opacity:0;}}
+    .bubbles span:nth-child(1){left:10%; width:40px; height:40px; animation-delay:0s; animation-duration:20s;}
+    .bubbles span:nth-child(2){left:20%; width:25px; height:25px; animation-delay:2s; animation-duration:18s;}
+    .bubbles span:nth-child(3){left:35%; width:50px; height:50px; animation-delay:4s; animation-duration:22s;}
+    .bubbles span:nth-child(4){left:50%; width:15px; height:15px; animation-delay:1s; animation-duration:25s;}
+    .bubbles span:nth-child(5){left:65%; width:30px; height:30px; animation-delay:3s; animation-duration:19s;}
+    .bubbles span:nth-child(6){left:80%; width:60px; height:60px; animation-delay:5s; animation-duration:23s;}
+    .bubbles span:nth-child(7){left:90%; width:20px; height:20px; animation-delay:6s; animation-duration:17s;}
+
+    .container{
+      width:90%; max-width:1200px; background: rgba(255,255,255,0); border-radius:20px;
+      backdrop-filter: blur(15px); display:flex; flex-wrap:wrap; padding:40px; gap:30px; color:#222; z-index:1; position:relative;
+    }
+
+    .header{width:100%; text-align:center; margin-bottom:20px; color:white;}
+    .header img{height:60px; vertical-align:middle;}
+    .header h1{font-size:2.2rem; margin-top:10px;}
+    .header p{color:white;}
+
+    .card{
+      flex:1; min-width:300px; background: rgba(255,255,255,0.50); /* card transparency */
+      border-radius:15px; padding:25px; box-shadow:0 8px 20px rgba(0,0,0,0.15); text-align:center; position:relative;
+    }
+
+    .card h2{font-size:1.5rem; margin-bottom:20px; color:#2575fc; display:flex; align-items:center; justify-content:center; gap:10px;}
+    .card h2 img{height:25px;}
+
+    input, button{width:100%; padding:12px; margin:10px 0; border:none; border-radius:8px; outline:none; font-size:0.95rem;}
+    input{background: rgba(243, 244, 246, 0.55); color:#111;} /* 55% transparency */
+    input::placeholder{color:#555;}
+    #chat-input{background: rgba(243, 244, 246, 0.55);} /* chat input same transparency */
+    button{background:#2575fc; color:white; font-weight:bold; cursor:pointer; transition:0.3s;}
+    button:hover{background:#6a11cb;}
+
+    .chat-box{height:300px; background:#f9fafb; border-radius:10px; padding:15px; overflow-y:auto; margin-bottom:10px; font-size:0.9rem; text-align:left;}
+    .chat-msg{margin:8px 0; padding:10px 14px; border-radius:16px; max-width:75%;}
+    .user{background:#2575fc; color:white; margin-left:auto; text-align:right;}
+    .bot{background:#e5e7eb; color:#111; margin-right:auto; text-align:left;}
+    .typing{font-size:0.85rem; color:#666; font-style:italic; margin:6px 0;}
+
+    .loading{display:inline-block; width:50px; height:10px; position:relative;}
+    .loading div{display:inline-block; width:10px; height:10px; background:#2575fc; border-radius:50%; animation:loading 1.2s infinite ease-in-out; margin-right:5px;}
+    .loading div:nth-child(1){animation-delay:0s;} .loading div:nth-child(2){animation-delay:0.2s;} .loading div:nth-child(3){animation-delay:0.4s;}
+    @keyframes loading{0%,80%,100%{transform:scale(0);}40%{transform:scale(1);}}
+
+    footer{width:100%; text-align:center; margin-top:24px; font-size:1rem; color:white;}
+  </style>
+</head>
+<body>
+  <div class="bubbles">
+    <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+  </div>
+
+  <div class="container">
+    <div class="header">
+      <img src="gemini.png" alt="Gemini Logo">
+      <h1> Resume Analyzer -> AI Powered Screening</h1>
+      <p>Upload your resume and let <b>Gemini</b> evaluate your profile instantly</p>
+    </div>
+
+    <div class="card">
+      <h2>📋 Apply Here</h2>
+      <form id="application-form" action="/submit" method="POST" enctype="multipart/form-data">
+        <input type="text" name="name" placeholder="Full Name" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <input type="tel" name="phone" placeholder="Phone" required>
+        <input type="file" name="resume" accept=".pdf,.doc,.docx" required>
+        <button type="submit">Submit Application</button>
+      </form>
+      <div id="form-result"></div>
+    </div>
+
+    <div class="card">
+      <h2><img src="gemini.png" alt="Gemini"> Ask Gemini</h2>
+      <div class="chat-box" id="chat-box"></div>
+      <input type="text" placeholder="Ask Gemini about the role..." id="chat-input">
+      <button id="send-btn">Send</button>
+    </div>
+
+    <footer>© 2025 Abrar Ahmad | Resume Analyzer with Gemini AI</footer>
+  </div>
+
+  <script>
+    // Submit form on Enter key
+    const appForm = document.getElementById("application-form");
+    appForm.addEventListener("keydown", e => {
+      if(e.key === "Enter") { e.preventDefault(); appForm.requestSubmit(); }
+    });
+
+    // Submit chat on Enter key
+    const chatInput = document.getElementById("chat-input");
+    chatInput.addEventListener("keydown", e => {
+      if(e.key === "Enter") { e.preventDefault(); document.getElementById("send-btn").click(); }
+    });
+
+    // Form submission via AJAX
+    appForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      const formData = new FormData(appForm);
+      let resultDiv = document.getElementById("form-result");
+      resultDiv.innerHTML = `<div class="loading"><div></div><div></div><div></div></div> <span>Analyzing...</span>`;
+      try {
+        let res = await fetch("/submit", { method:"POST", body:formData });
+        let data = await res.json();
+        if(data.result==="success"){
+          resultDiv.innerHTML = `<p style="color:green;">✅ ${data.message} | Score: ${data.score} | Status: ${data.application_status}</p>`;
+        } else {
+          resultDiv.innerHTML = `<p style="color:red;">❌ ${data.message}</p>`;
+        }
+      } catch(err){
+        resultDiv.innerHTML = `<p style="color:red;">⚠️ Error: ${err}</p>`;
+      }
+    });
+
+    // Chat functionality
+    document.getElementById("send-btn").addEventListener("click", async () => {
+      let msg = chatInput.value.trim();
+      if(!msg) return;
+      let chatBox = document.getElementById("chat-box");
+
+      let userDiv = document.createElement("div");
+      userDiv.className = "chat-msg user";
+      userDiv.textContent = msg;
+      chatBox.appendChild(userDiv);
+
+      let typingDiv = document.createElement("div");
+      typingDiv.className = "typing";
+      typingDiv.textContent = "Gemini is typing...";
+      chatBox.appendChild(typingDiv);
+
+      chatInput.value = "";
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      try {
+        let res = await fetch("/chat", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ message: msg })
+        });
+        let data = await res.json();
+        typingDiv.remove();
+        let botDiv = document.createElement("div");
+        botDiv.className = "chat-msg bot";
+        botDiv.textContent = data.reply;
+        chatBox.appendChild(botDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      } catch(err){
+        typingDiv.textContent = "⚠️ Error: "+err;
+      }
+    });
+  </script>
+</body>
+</html>
